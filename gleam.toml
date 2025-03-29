@@ -1,0 +1,16 @@
+name = "parsley"
+version = "1.0.0"
+
+description = "A parser combinator library"
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "Phandal", repo = "https://github.com/Phandal/parsley" }
+
+# For a full reference of all the available options, you can have a look at
+# https://gleam.run/writing-gleam/gleam-toml/.
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_regexp = ">= 1.1.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
