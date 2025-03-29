@@ -1,7 +1,11 @@
 import gleam/string
 import gleeunit
 import gleeunit/should
-import parsley.{ParserError, ParserState}
+import parsley.{type ParserState, ParserError, ParserState}
+
+fn upcase(state: ParserState(String)) -> ParserState(String) {
+  ParserState(..state, match: string.uppercase(state.match))
+}
 
 pub fn main() {
   gleeunit.main()
@@ -83,12 +87,78 @@ pub fn digit_one_with_characters_test() {
 }
 
 pub fn map_uppercase_test() {
-  let upper_case_parser =
-    parsley.map(parsley.string("goodbye"), fn(state) {
-      ParserState(..state, match: string.uppercase(state.match))
-    })
+  let upper_case_parser = parsley.map(parsley.string("goodbye"), upcase)
 
   upper_case_parser("goodbye mars")
   |> should.be_ok
   |> should.equal(ParserState("GOODBYE", " mars"))
 }
+
+pub fn many_test() {
+  let many_parser = parsley.many(parsley.string("abc"))
+
+  many_parser("abcabcdef")
+  |> should.be_ok
+  |> should.equal(ParserState(["abc", "abc"], "def"))
+}
+
+pub fn many_empty_test() {
+  let many_empty_parser = parsley.many(parsley.string("abc"))
+
+  many_empty_parser("defabc")
+  |> should.be_ok
+  |> should.equal(ParserState([], "defabc"))
+}
+
+pub fn many_one_test() {
+  let many_parser = parsley.many_one(parsley.string("abc"))
+
+  many_parser("abcabcdef")
+  |> should.be_ok
+  |> should.equal(ParserState(["abc", "abc"], "def"))
+}
+
+pub fn many_one_empty_test() {
+  let many_empty_parser = parsley.many_one(parsley.string("abc"))
+
+  many_empty_parser("defabc")
+  |> should.be_error
+  |> should.equal(ParserError("expected at least one match but got '[]...'"))
+}
+
+pub fn sequence_test() {
+  let abc_def_parser =
+    parsley.sequence([parsley.string("abc"), parsley.string("def")])
+
+  abc_def_parser("abcdef")
+  |> should.be_ok
+  |> should.equal(ParserState(["abc", "def"], ""))
+}
+
+pub fn sequence_error_test() {
+  let abc_def_parser =
+    parsley.sequence([parsley.string("abc"), parsley.string("def")])
+
+  abc_def_parser("abcgdef")
+  |> should.be_error
+  |> should.equal(ParserError("expected def but got 'gdef...'"))
+}
+
+pub fn recursive_sequence_and_map_test() {
+  let abc_def_parser =
+    parsley.sequence([parsley.string("abc"), parsley.string("def")])
+
+  let ghi_jkl_parser =
+    parsley.sequence([
+      parsley.map(parsley.string("ghi"), upcase),
+      parsley.string("jkl"),
+    ])
+
+  let alphabet_parser = parsley.sequence([abc_def_parser, ghi_jkl_parser])
+
+  alphabet_parser("abcdefghijkl")
+  |> should.be_ok
+  |> should.equal(ParserState([["abc", "def"], ["GHI", "jkl"]], ""))
+}
+// choice
+// chain

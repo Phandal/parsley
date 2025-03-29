@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/regexp.{CompileError}
 import gleam/result
 import gleam/string
@@ -39,6 +40,57 @@ pub fn map(
   fn(input: String) -> ParserResult(b) {
     parser(input) |> result.map(transform)
   }
+}
+
+pub fn many(parser: Parser(a)) -> Parser(List(a)) {
+  fn(input: String) -> ParserResult(List(a)) {
+    let #(matches, input) = do_many_parse(parser, input, [])
+
+    Ok(ParserState(matches, input))
+  }
+}
+
+pub fn many_one(parser: Parser(a)) -> Parser(List(a)) {
+  fn(input: String) -> ParserResult(List(a)) {
+    let #(matches, rest) = do_many_parse(parser, input, [])
+
+    case matches {
+      [] -> handle_error("at least one match", "[]")
+      x -> Ok(ParserState(x, rest))
+    }
+  }
+}
+
+fn do_many_parse(
+  parser: Parser(a),
+  input: String,
+  matches: List(a),
+) -> #(List(a), String) {
+  case parser(input) {
+    Ok(ParserState(match, rest)) ->
+      do_many_parse(parser, rest, [match, ..matches])
+    Error(_) -> #(matches, input)
+  }
+}
+
+pub fn sequence(parsers: List(Parser(a))) -> Parser(List(a)) {
+  fn(input: String) -> ParserResult(List(a)) {
+    parsers
+    |> list.try_fold(ParserState([], input), do_sequence_parse)
+    |> result.map(fn(state: ParserState(List(a))) -> ParserState(List(a)) {
+      ParserState(..state, match: list.reverse(state.match))
+    })
+  }
+}
+
+fn do_sequence_parse(
+  previous_state: ParserState(List(a)),
+  parser: Parser(a),
+) -> ParserResult(List(a)) {
+  parser(previous_state.rest)
+  |> result.map(fn(state: ParserState(a)) -> ParserState(List(a)) {
+    ParserState([state.match, ..previous_state.match], state.rest)
+  })
 }
 
 pub fn string(match str: String) -> Parser(String) {
