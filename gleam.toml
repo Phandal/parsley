@@ -3,7 +3,7 @@ version = "1.0.0"
 
 description = "A parser combinator library"
 licences = ["Apache-2.0"]
-repository = { type = "github", user = "Phandal", repo = "https://github.com/Phandal/parsley" }
+repository = { type = "github", user = "Phandal", repo = "parsley" }
 
 # For a full reference of all the available options, you can have a look at
 # https://gleam.run/writing-gleam/gleam-toml/.
