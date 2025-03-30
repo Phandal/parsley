@@ -35,10 +35,10 @@ fn handle_error(
 
 pub fn map(
   parser: Parser(a),
-  transform: fn(ParserState(a)) -> ParserState(b),
+  transformer: fn(ParserState(a)) -> ParserState(b),
 ) -> Parser(b) {
   fn(input: String) -> ParserResult(b) {
-    parser(input) |> result.map(transform)
+    parser(input) |> result.map(transformer)
   }
 }
 
@@ -179,5 +179,14 @@ pub fn digit_one(input: String) -> ParserResult(String) {
       }
     }
     Error(CompileError(detail, _)) -> Error(RegexError(detail))
+  }
+}
+
+pub fn chain(
+  parser: Parser(a),
+  transformer: fn(ParserState(a)) -> ParserResult(b),
+) -> Parser(b) {
+  fn(input: String) -> ParserResult(b) {
+    parser(input) |> result.try(transformer)
   }
 }

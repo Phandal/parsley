@@ -1,10 +1,20 @@
 import gleam/string
 import gleeunit
 import gleeunit/should
-import parsley.{type ParserState, ParserError, ParserState}
+import parsley.{type ParserResult, type ParserState, ParserError, ParserState}
 
 fn upcase(state: ParserState(String)) -> ParserState(String) {
   ParserState(..state, match: string.uppercase(state.match))
+}
+
+fn upcase_result(
+  state: ParserState(String),
+  should_fail: Bool,
+) -> ParserResult(String) {
+  case should_fail {
+    True -> Error(ParserError("upcase_result expected failure"))
+    False -> Ok(ParserState(..state, match: string.uppercase(state.match)))
+  }
 }
 
 pub fn main() {
@@ -187,6 +197,25 @@ pub fn choice_none_test() {
   |> should.be_error
   |> should.equal(ParserError("expected one choice to match but got '123...'"))
 }
+
+pub fn chain_test() {
+  let chain_parser =
+    parsley.chain(parsley.string("abc"), upcase_result(_, False))
+
+  chain_parser("abc")
+  |> should.be_ok
+  |> should.equal(ParserState("ABC", ""))
+}
+
+pub fn chain_error_test() {
+  let chain_parser =
+    parsley.chain(parsley.string("abc"), upcase_result(_, True))
+
+  chain_parser("abc")
+  |> should.be_error
+  |> should.equal(ParserError("upcase_result expected failure"))
+}
+
 // alpha_digit
 // alpha_digit_one
 // int
