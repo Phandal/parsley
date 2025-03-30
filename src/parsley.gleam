@@ -1,3 +1,4 @@
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/regexp.{CompileError}
@@ -214,6 +215,33 @@ fn do_int_parse(input: String) -> ParserResult(String) {
 
 fn do_int_conversion(state: ParserState(String)) -> ParserResult(Int) {
   case int.parse(state.match) {
+    Ok(n) -> Ok(ParserState(..state, match: n))
+    Error(_) -> handle_error("a number", state.rest)
+  }
+}
+
+pub fn float(input: String) -> ParserResult(Float) {
+  input |> chain(do_float_parse, do_float_conversion)
+}
+
+fn do_float_parse(input: String) -> ParserResult(String) {
+  case regexp.from_string("^-?[0-9]+\\.[0-9]*") {
+    Ok(re) -> {
+      case regexp.scan(re, input) {
+        [] -> handle_error("a float", input)
+        [match, ..] | [match] ->
+          Ok(ParserState(
+            match.content,
+            string.drop_start(input, string.length(match.content)),
+          ))
+      }
+    }
+    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+  }
+}
+
+fn do_float_conversion(state: ParserState(String)) -> ParserResult(Float) {
+  case float.parse(state.match) {
     Ok(n) -> Ok(ParserState(..state, match: n))
     Error(_) -> handle_error("a number", state.rest)
   }

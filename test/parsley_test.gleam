@@ -233,6 +233,23 @@ pub fn int_character_test() {
   |> should.be_error
   |> should.equal(ParserError("expected a number but got 'abc...'"))
 }
+
+pub fn float_positive_test() {
+  parsley.float("12.0")
+  |> should.be_ok
+  |> should.equal(ParserState(12.0, ""))
+}
+
+pub fn float_negative_test() {
+  parsley.float("-12.0")
+  |> should.be_ok
+  |> should.equal(ParserState(-12.0, ""))
+}
+
+pub fn float_character_test() {
+  parsley.float("abc")
+  |> should.be_error
+  |> should.equal(ParserError("expected a float but got 'abc...'"))
+}
 // alpha_digit
 // alpha_digit_one
-// float
