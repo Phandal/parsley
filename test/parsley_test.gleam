@@ -227,8 +227,12 @@ pub fn int_negative_test() {
   |> should.be_ok
   |> should.equal(ParserState(-56, ""))
 }
+
+pub fn int_character_test() {
+  parsley.int("abc")
+  |> should.be_error
+  |> should.equal(ParserError("expected a number but got 'abc...'"))
+}
 // alpha_digit
 // alpha_digit_one
-// int
 // float
-// chain
