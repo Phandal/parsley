@@ -246,3 +246,35 @@ fn do_float_conversion(state: ParserState(String)) -> ParserResult(Float) {
     Error(_) -> handle_error("a number", state.rest)
   }
 }
+
+pub fn alpha_digit(input: String) -> ParserResult(String) {
+  case regexp.from_string("^[a-zA-Z0-9]+") {
+    Ok(re) -> {
+      case regexp.scan(re, input) {
+        [] -> Ok(ParserState("", input))
+        [match, ..] | [match] ->
+          Ok(ParserState(
+            match.content,
+            string.drop_start(input, string.length(match.content)),
+          ))
+      }
+    }
+    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+  }
+}
+
+pub fn alpha_digit_one(input: String) -> ParserResult(String) {
+  case regexp.from_string("^[a-zA-Z0-9]+") {
+    Ok(re) -> {
+      case regexp.scan(re, input) {
+        [] -> handle_error("at least one alphanumeric character", input)
+        [match, ..] | [match] ->
+          Ok(ParserState(
+            match.content,
+            string.drop_start(input, string.length(match.content)),
+          ))
+      }
+    }
+    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+  }
+}

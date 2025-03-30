@@ -251,5 +251,29 @@ pub fn float_character_test() {
   |> should.be_error
   |> should.equal(ParserError("expected a float but got 'abc...'"))
 }
-// alpha_digit
-// alpha_digit_one
+
+pub fn alpha_digit_test() {
+  parsley.alpha_digit("abc123..")
+  |> should.be_ok
+  |> should.equal(ParserState("abc123", ".."))
+}
+
+pub fn alpha_digit_empty_test() {
+  parsley.alpha_digit("..abc123")
+  |> should.be_ok
+  |> should.equal(ParserState("", "..abc123"))
+}
+
+pub fn alpha_digit_one_test() {
+  parsley.alpha_digit_one("abc123..")
+  |> should.be_ok
+  |> should.equal(ParserState("abc123", ".."))
+}
+
+pub fn alpha_digit_one_empty_test() {
+  parsley.alpha_digit_one("..abc123")
+  |> should.be_error
+  |> should.equal(ParserError(
+    "expected at least one alphanumeric character but got '..abc123...'",
+  ))
+}
