@@ -216,6 +216,17 @@ pub fn chain_error_test() {
   |> should.equal(ParserError("upcase_result expected failure"))
 }
 
+pub fn int_positive_test() {
+  parsley.int("56")
+  |> should.be_ok
+  |> should.equal(ParserState(56, ""))
+}
+
+pub fn int_negative_test() {
+  parsley.int("-56")
+  |> should.be_ok
+  |> should.equal(ParserState(-56, ""))
+}
 // alpha_digit
 // alpha_digit_one
 // int

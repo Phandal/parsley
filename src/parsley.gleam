@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/list
 import gleam/regexp.{CompileError}
 import gleam/result
@@ -188,5 +189,32 @@ pub fn chain(
 ) -> Parser(b) {
   fn(input: String) -> ParserResult(b) {
     parser(input) |> result.try(transformer)
+  }
+}
+
+pub fn int(input: String) -> ParserResult(Int) {
+  input |> chain(do_int_parse, do_int_conversion)
+}
+
+fn do_int_parse(input: String) -> ParserResult(String) {
+  case regexp.from_string("^-?[0-9]+") {
+    Ok(re) -> {
+      case regexp.scan(re, input) {
+        [] -> handle_error("a number", input)
+        [match, ..] | [match] ->
+          Ok(ParserState(
+            match.content,
+            string.drop_start(input, string.length(match.content)),
+          ))
+      }
+    }
+    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+  }
+}
+
+fn do_int_conversion(state: ParserState(String)) -> ParserResult(Int) {
+  case int.parse(state.match) {
+    Ok(n) -> Ok(ParserState(..state, match: n))
+    Error(_) -> handle_error("a number", state.rest)
   }
 }
