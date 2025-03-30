@@ -93,6 +93,22 @@ fn do_sequence_parse(
   })
 }
 
+pub fn choice(parsers: List(Parser(a))) -> Parser(a) {
+  fn(input: String) -> ParserResult(a) { do_choice_parse(input, parsers) }
+}
+
+fn do_choice_parse(input: String, parsers: List(Parser(a))) -> ParserResult(a) {
+  case parsers {
+    [] -> handle_error("one choice to match", input)
+    [parser, ..rest] -> {
+      case parser(input) {
+        Ok(state) -> Ok(state)
+        Error(_) -> do_choice_parse(input, rest)
+      }
+    }
+  }
+}
+
 pub fn string(match str: String) -> Parser(String) {
   fn(input: String) -> ParserResult(String) {
     case string.starts_with(input, str) {

@@ -160,5 +160,35 @@ pub fn recursive_sequence_and_map_test() {
   |> should.be_ok
   |> should.equal(ParserState([["abc", "def"], ["GHI", "jkl"]], ""))
 }
-// choice
+
+pub fn choice_single_test() {
+  let choice_single_parser =
+    parsley.choice([parsley.alpha_one, parsley.digit_one])
+
+  choice_single_parser("123")
+  |> should.be_ok
+  |> should.equal(ParserState("123", ""))
+}
+
+pub fn choice_multiple_test() {
+  let choice_multiple_parser =
+    parsley.choice([parsley.alpha_one, parsley.string("abc")])
+
+  choice_multiple_parser("abc")
+  |> should.be_ok
+  |> should.equal(ParserState("abc", ""))
+}
+
+pub fn choice_none_test() {
+  let choice_none_parser =
+    parsley.choice([parsley.string("abc"), parsley.string("def")])
+
+  choice_none_parser("123")
+  |> should.be_error
+  |> should.equal(ParserError("expected one choice to match but got '123...'"))
+}
+// alpha_digit
+// alpha_digit_one
+// int
+// float
 // chain
