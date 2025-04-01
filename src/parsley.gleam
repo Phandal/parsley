@@ -2,7 +2,6 @@ import gleam/float
 import gleam/int
 import gleam/list
 import gleam/regexp.{CompileError}
-import gleam/result
 import gleam/string
 
 const preview_length = 10
@@ -11,88 +10,93 @@ pub type ParserState(a) {
   ParserState(match: a, rest: String)
 }
 
-pub type ParserError {
-  ParserError(String)
-  RegexError(String)
+pub type ParserResult(a) {
+  ParseOk(ParserState(a))
+  ParseError(msg: String)
 }
-
-pub type ParserResult(a) =
-  Result(ParserState(a), ParserError)
 
 pub type Parser(a) =
   fn(String) -> ParserResult(a)
 
-fn handle_error(
-  expected: String,
-  got: String,
-) -> Result(ParserState(a), ParserError) {
-  Error(ParserError(
+fn handle_error(expected: String, got: String) -> ParserResult(a) {
+  ParseError(
     "expected "
     <> expected
     <> " but got '"
     <> string.slice(got, 0, preview_length)
     <> "...'",
-  ))
+  )
 }
 
-pub fn map(
-  parser: Parser(a),
-  transformer: fn(ParserState(a)) -> ParserState(b),
-) -> Parser(b) {
+pub fn map(parser: Parser(a), transformer: fn(a) -> b) -> Parser(b) {
   fn(input: String) -> ParserResult(b) {
-    parser(input) |> result.map(transformer)
+    case parser(input) {
+      ParseOk(state) ->
+        ParseOk(ParserState(match: transformer(state.match), rest: state.rest))
+      ParseError(msg) -> ParseError(msg)
+    }
   }
 }
 
 pub fn many(parser: Parser(a)) -> Parser(List(a)) {
   fn(input: String) -> ParserResult(List(a)) {
-    let #(matches, input) = do_many_parse(parser, input, [])
-
-    Ok(ParserState(matches, input))
+    let initial_state = ParserState([], input)
+    ParseOk(do_many_parse(parser, initial_state))
   }
 }
 
 pub fn many_one(parser: Parser(a)) -> Parser(List(a)) {
   fn(input: String) -> ParserResult(List(a)) {
-    let #(matches, rest) = do_many_parse(parser, input, [])
+    let initial_state = ParserState([], input)
+    let new_state = do_many_parse(parser, initial_state)
 
-    case matches {
-      [] -> handle_error("at least one match", "[]")
-      x -> Ok(ParserState(x, rest))
+    case new_state {
+      ParserState([], _) -> handle_error("at least one match", "[]")
+      state -> ParseOk(state)
     }
   }
 }
 
 fn do_many_parse(
   parser: Parser(a),
-  input: String,
-  matches: List(a),
-) -> #(List(a), String) {
-  case parser(input) {
-    Ok(ParserState(match, rest)) ->
-      do_many_parse(parser, rest, [match, ..matches])
-    Error(_) -> #(matches, input)
+  state: ParserState(List(a)),
+) -> ParserState(List(a)) {
+  case parser(state.rest) {
+    ParseOk(new_state) ->
+      do_many_parse(
+        parser,
+        ParserState([new_state.match, ..state.match], new_state.rest),
+      )
+    ParseError(_) -> state
   }
 }
 
 pub fn sequence(parsers: List(Parser(a))) -> Parser(List(a)) {
   fn(input: String) -> ParserResult(List(a)) {
-    parsers
-    |> list.try_fold(ParserState([], input), do_sequence_parse)
-    |> result.map(fn(state: ParserState(List(a))) -> ParserState(List(a)) {
-      ParserState(..state, match: list.reverse(state.match))
-    })
+    case
+      list.fold(parsers, ParseOk(ParserState([], input)), do_sequence_parse)
+    {
+      ParseOk(state) ->
+        ParseOk(ParserState(list.reverse(state.match), state.rest))
+      ParseError(msg) -> ParseError(msg)
+    }
   }
 }
 
 fn do_sequence_parse(
-  previous_state: ParserState(List(a)),
+  previous_state: ParserResult(List(a)),
   parser: Parser(a),
 ) -> ParserResult(List(a)) {
-  parser(previous_state.rest)
-  |> result.map(fn(state: ParserState(a)) -> ParserState(List(a)) {
-    ParserState([state.match, ..previous_state.match], state.rest)
-  })
+  case previous_state {
+    ParseOk(state) -> {
+      case parser(state.rest) {
+        ParseOk(new_state) ->
+          ParseOk(ParserState([new_state.match, ..state.match], new_state.rest))
+        ParseError(msg) -> ParseError(msg)
+      }
+    }
+    ParseError(msg) -> ParseError(msg)
+  }
 }
 
 pub fn choice(parsers: List(Parser(a))) -> Parser(a) {
@@ -104,8 +108,8 @@ fn do_choice_parse(input: String, parsers: List(Parser(a))) -> ParserResult(a) {
     [] -> handle_error("one choice to match", input)
     [parser, ..rest] -> {
       case parser(input) {
-        Ok(state) -> Ok(state)
-        Error(_) -> do_choice_parse(input, rest)
+        ParseError(_) -> do_choice_parse(input, rest)
+        x -> x
       }
     }
   }
@@ -114,7 +118,8 @@ fn do_choice_parse(input: String, parsers: List(Parser(a))) -> ParserResult(a) {
 pub fn string(match str: String) -> Parser(String) {
   fn(input: String) -> ParserResult(String) {
     case string.starts_with(input, str) {
-      True -> Ok(ParserState(str, string.drop_start(input, string.length(str))))
+      True ->
+        ParseOk(ParserState(str, string.drop_start(input, string.length(str))))
       False -> handle_error(str, input)
     }
   }
@@ -124,15 +129,15 @@ pub fn alpha(input: String) -> ParserResult(String) {
   case regexp.from_string("^[a-zA-Z]+") {
     Ok(re) -> {
       case regexp.scan(re, input) {
-        [] -> Ok(ParserState("", input))
+        [] -> ParseOk(ParserState("", input))
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
@@ -142,13 +147,13 @@ pub fn alpha_one(input: String) -> ParserResult(String) {
       case regexp.scan(re, input) {
         [] -> handle_error("at least one alpha character", input)
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
@@ -156,15 +161,15 @@ pub fn digit(input: String) -> ParserResult(String) {
   case regexp.from_string("^[0-9]+") {
     Ok(re) -> {
       case regexp.scan(re, input) {
-        [] -> Ok(ParserState("", input))
+        [] -> ParseOk(ParserState("", input))
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
@@ -174,13 +179,13 @@ pub fn digit_one(input: String) -> ParserResult(String) {
       case regexp.scan(re, input) {
         [] -> handle_error("at least one digit", input)
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
@@ -189,7 +194,10 @@ pub fn chain(
   transformer: fn(ParserState(a)) -> ParserResult(b),
 ) -> Parser(b) {
   fn(input: String) -> ParserResult(b) {
-    parser(input) |> result.try(transformer)
+    case parser(input) {
+      ParseOk(state) -> transformer(state)
+      ParseError(msg) -> ParseError(msg)
+    }
   }
 }
 
@@ -203,19 +211,19 @@ fn do_int_parse(input: String) -> ParserResult(String) {
       case regexp.scan(re, input) {
         [] -> handle_error("a number", input)
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
 fn do_int_conversion(state: ParserState(String)) -> ParserResult(Int) {
   case int.parse(state.match) {
-    Ok(n) -> Ok(ParserState(..state, match: n))
+    Ok(n) -> ParseOk(ParserState(match: n, rest: state.rest))
     Error(_) -> handle_error("a number", state.rest)
   }
 }
@@ -230,19 +238,19 @@ fn do_float_parse(input: String) -> ParserResult(String) {
       case regexp.scan(re, input) {
         [] -> handle_error("a float", input)
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
 fn do_float_conversion(state: ParserState(String)) -> ParserResult(Float) {
   case float.parse(state.match) {
-    Ok(n) -> Ok(ParserState(..state, match: n))
+    Ok(n) -> ParseOk(ParserState(match: n, rest: state.rest))
     Error(_) -> handle_error("a number", state.rest)
   }
 }
@@ -251,15 +259,15 @@ pub fn alpha_digit(input: String) -> ParserResult(String) {
   case regexp.from_string("^[a-zA-Z0-9]+") {
     Ok(re) -> {
       case regexp.scan(re, input) {
-        [] -> Ok(ParserState("", input))
+        [] -> ParseOk(ParserState("", input))
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
 
@@ -269,12 +277,12 @@ pub fn alpha_digit_one(input: String) -> ParserResult(String) {
       case regexp.scan(re, input) {
         [] -> handle_error("at least one alphanumeric character", input)
         [match, ..] | [match] ->
-          Ok(ParserState(
+          ParseOk(ParserState(
             match.content,
             string.drop_start(input, string.length(match.content)),
           ))
       }
     }
-    Error(CompileError(detail, _)) -> Error(RegexError(detail))
+    Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
