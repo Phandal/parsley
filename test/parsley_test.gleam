@@ -20,6 +20,10 @@ fn upcase_result(state: ParserState(String)) -> ParserResult(String) {
   }
 }
 
+fn not_asterisk(char: String) -> Bool {
+  char != "*"
+}
+
 pub fn main() {
   gleeunit.main()
 }
@@ -244,18 +248,19 @@ pub fn alpha_digit_one_empty_test() {
     "expected at least one alphanumeric character but got '..abc123...'",
   ))
 }
-//pub fn until_test() {
-//  let until_parser = parsley.until(not_asterisk)
-//
-//  until_parser("1ab2*hey")
-//  |> should.equal("1ab2", "*hey")
-//}
-//
-//pub fn until_end_of_input_test() {
-//  let until_parser = parsley.until(not_asterisk)
-//
-//  until_parser("1234")
-//  |> should.equal(ParseError("end of input"))
-//}
-//pub fn until(p: fn(char: String) -> Bool) -> ParserState(String)
+
+pub fn until_test() {
+  let until_parser = parsley.until(not_asterisk)
+
+  until_parser("1ab2*hey")
+  |> should.equal(ParseOk(ParserState("1ab2", "*hey")))
+}
+
+pub fn until_end_of_input_test() {
+  let until_parser = parsley.until(not_asterisk)
+
+  until_parser("1234")
+  |> should.equal(ParseOk(ParserState("1234", "")))
+}
+// pub fn until(p: fn(char: String) -> Bool) -> ParserState(String)
 //pub fn consume() -> ParserState(String)

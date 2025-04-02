@@ -286,3 +286,24 @@ pub fn alpha_digit_one(input: String) -> ParserResult(String) {
     Error(CompileError(detail, _)) -> ParseError(detail)
   }
 }
+
+pub fn until(predicate: fn(String) -> Bool) -> Parser(String) {
+  fn(input: String) -> ParserResult(String) {
+    ParseOk(do_parse_until(ParserState("", input), predicate))
+  }
+}
+
+fn do_parse_until(
+  state: ParserState(String),
+  predicate: fn(String) -> Bool,
+) -> ParserState(String) {
+  let ParserState(match, rest) = state
+
+  case string.pop_grapheme(rest) {
+    Ok(#(char, tl)) -> case predicate(char) {
+      True -> do_parse_until(ParserState(match <> char, tl), predicate)
+      False -> state
+    }
+    Error(_) -> state
+  }
+}
