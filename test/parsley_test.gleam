@@ -262,5 +262,27 @@ pub fn until_end_of_input_test() {
   until_parser("1234")
   |> should.equal(Ok(ParserState("1234", "")))
 }
-// pub fn until(p: fn(char: String) -> Bool) -> ParserState(String)
-//pub fn consume() -> ParserState(String)
+
+pub fn consume_test() {
+  let consume_parser = parsley.consume("a")
+
+  consume_parser("abc")
+  |> should.be_ok
+  |> should.equal(ParserState([], "bc"))
+}
+
+pub fn consume_does_not_match_test() {
+  let consume_parser = parsley.consume("d")
+
+  consume_parser("abc")
+  |> should.be_ok
+  |> should.equal(ParserState([], "abc"))
+}
+
+pub fn consume_end_of_input_test() {
+  let consume_parser = parsley.consume("~")
+
+  consume_parser("")
+  |> should.be_ok
+  |> should.equal(ParserState([], ""))
+}
