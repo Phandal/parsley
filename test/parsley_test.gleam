@@ -268,7 +268,7 @@ pub fn consume_test() {
 
   consume_parser("abc")
   |> should.be_ok
-  |> should.equal(ParserState([], "bc"))
+  |> should.equal(ParserState("", "bc"))
 }
 
 pub fn consume_does_not_match_test() {
@@ -276,7 +276,7 @@ pub fn consume_does_not_match_test() {
 
   consume_parser("abc")
   |> should.be_ok
-  |> should.equal(ParserState([], "abc"))
+  |> should.equal(ParserState("", "abc"))
 }
 
 pub fn consume_end_of_input_test() {
@@ -284,5 +284,5 @@ pub fn consume_end_of_input_test() {
 
   consume_parser("")
   |> should.be_ok
-  |> should.equal(ParserState([], ""))
+  |> should.equal(ParserState("", ""))
 }

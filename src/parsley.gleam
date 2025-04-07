@@ -306,16 +306,16 @@ fn do_parse_until(
   }
 }
 
-pub fn consume(char: String) -> Parser(List(a)) {
-  fn (input: String) -> ParserResult(List(a)) {
+pub fn consume(char: String) -> Parser(String) {
+  fn (input: String) -> ParserResult(String) {
     case string.pop_grapheme(input) {
       Ok(#(hd, tl)) -> {
         case hd == char {
-          True -> Ok(ParserState([], tl))
-          False -> Ok(ParserState([], input))
+          True -> Ok(ParserState("", tl))
+          False -> Ok(ParserState("", input))
         }
       }
-      Error(_) -> Ok(ParserState([], input))
+      Error(_) -> Ok(ParserState("", input))
     }
   }
 }
