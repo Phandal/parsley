@@ -14,11 +14,6 @@ pub type ParserState(a) {
 pub type ParserResult(a) =
   Result(ParserState(a), String)
 
-// pub type ParserResult(a) {
-//   ParseOk(ParserState(a))
-//   ParseError(msg: String)
-// }
-
 pub type Parser(a) =
   fn(String) -> ParserResult(a)
 
@@ -57,15 +52,6 @@ pub fn bind(
     }
   }
 }
-
-// pub fn try(
-//   parser: Parser(a),
-//   transformer: fn(ParserState(a)) -> ParserResult(b),
-// ) -> Parser(b) {
-//   fn(input: String) -> ParserResult(b) {
-//     parser(input) |> result.try(transformer)
-//   }
-// }
 
 pub fn many(parser: Parser(a)) -> Parser(List(a)) {
   fn(input: String) -> ParserResult(List(a)) {
