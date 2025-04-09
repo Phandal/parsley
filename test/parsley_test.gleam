@@ -1,9 +1,7 @@
 import gleam/string
 import gleeunit
 import gleeunit/should
-import parsley.{
-  type ParserResult, type ParserState, ParserState,
-}
+import parsley.{type ParserResult, type ParserState, ParserState}
 
 fn upcase(match: String) -> String {
   string.uppercase(match)
@@ -12,11 +10,7 @@ fn upcase(match: String) -> String {
 fn upcase_result(state: ParserState(String)) -> ParserResult(String) {
   case state.match {
     "fail" -> Error("upcase_result expected failure")
-    _ ->
-      Ok(ParserState(
-        match: string.uppercase(state.match),
-        rest: state.rest,
-      ))
+    _ -> Ok(ParserState(match: string.uppercase(state.match), rest: state.rest))
   }
 }
 
@@ -87,9 +81,7 @@ pub fn digit_one_test() {
 
 pub fn digit_one_with_characters_test() {
   parsley.digit_one("abcd1234")
-  |> should.equal(Error(
-    "expected at least one digit but got 'abcd1234...'",
-  ))
+  |> should.equal(Error("expected at least one digit but got 'abcd1234...'"))
 }
 
 pub fn map_uppercase_test() {
@@ -183,17 +175,17 @@ pub fn choice_none_test() {
   |> should.equal(Error("expected one choice to match but got '123...'"))
 }
 
-pub fn chain_test() {
-  let chain_parser = parsley.bind(parsley.string("abc"), upcase_result)
+pub fn bind_test() {
+  let bind_parser = parsley.bind(parsley.string("abc"), upcase_result)
 
-  chain_parser("abc")
+  bind_parser("abc")
   |> should.equal(Ok(ParserState("ABC", "")))
 }
 
-pub fn chain_error_test() {
-  let chain_parser = parsley.bind(parsley.string("fail"), upcase_result)
+pub fn bind_error_test() {
+  let bind_parser = parsley.bind(parsley.string("fail"), upcase_result)
 
-  chain_parser("fail")
+  bind_parser("fail")
   |> should.equal(Error("upcase_result expected failure"))
 }
 
@@ -285,4 +277,12 @@ pub fn consume_end_of_input_test() {
   consume_parser("")
   |> should.be_ok
   |> should.equal(ParserState("", ""))
+}
+
+pub fn of_test() {
+  let of_parser = parsley.of("Hello")
+
+  of_parser("World")
+  |> should.be_ok
+  |> should.equal(ParserState("Hello", "World"))
 }

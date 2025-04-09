@@ -31,6 +31,7 @@ fn reverse_match_list(state: ParserState(List(a))) -> ParserState(List(a)) {
   ParserState(list.reverse(state.match), state.rest)
 }
 
+// Make the Parser Type a Functor
 pub fn map(parser: Parser(a), transformer: fn(a) -> b) -> Parser(b) {
   fn(input: String) -> ParserResult(b) {
     case parser(input) {
@@ -41,6 +42,12 @@ pub fn map(parser: Parser(a), transformer: fn(a) -> b) -> Parser(b) {
   }
 }
 
+// Make the parser a pointed Functor
+pub fn of(match: a) -> Parser(a) {
+  fn(input: String) -> ParserResult(a) { Ok(ParserState(match:, rest: input)) }
+}
+
+// Make the parse type a Monad
 pub fn bind(
   parser: Parser(a),
   transformer: fn(ParserState(a)) -> ParserResult(b),
@@ -307,7 +314,7 @@ fn do_parse_until(
 }
 
 pub fn consume(char: String) -> Parser(String) {
-  fn (input: String) -> ParserResult(String) {
+  fn(input: String) -> ParserResult(String) {
     case string.pop_grapheme(input) {
       Ok(#(hd, tl)) -> {
         case hd == char {
